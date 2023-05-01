@@ -1,21 +1,22 @@
 const express = require('express');
 const app = express();
-const port = 3000;
 const axios = require('axios');
 require('dotenv').config();
+const port = process.env.PORT;
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${process.env.PORT}`);
+  console.log(`Example app listening on port ${port}`);
 })
 
 app.get('/api/indicators', (req, res) => {
 
-    Promise.all([getIndicators(), getWeatherData()])
+    Promise.all([getIndicators(), getWeatherData(), getAirQuality()])
     .then((responses) => {
         const indicatorsData = responses[0];
         const weatherData = responses[1];
+        const airQualityData = responses[2];
 
-        const response = Object.assign(indicatorsData, weatherData);
+        const response = Object.assign(indicatorsData, weatherData, airQualityData);
 
         res.status(200).json(response);
     })
@@ -72,4 +73,53 @@ const getWeatherData = async () => {
     catch (err) {
         throw new Error (`Error api weather: ${err}`);
     }
+}
+
+const getAirQuality = async () => {
+    try {
+        const resData = await axios.get(`https://api.waqi.info/feed/@8511/?token=${process.env.TOKEN_AIR}`);
+
+        const dataAirQuality = {};
+    
+        if (resData.data.data.aqi >= 0 && resData.data.data.aqi <= 50){
+            dataAirQuality["quality"] = 'Bueno';
+        }
+        else if (resData.data.data.aqi >= 51 && resData.data.data.aqi <= 79){
+            dataAirQuality["quality"] = 'Regular';
+        }
+        else if (resData.data.data.aqi >= 80 && resData.data.data.aqi <= 109){
+            dataAirQuality["quality"] = 'Alerta';
+        }
+        else if (resData.data.data.aqi >= 110 && resData.data.data.aqi <= 169){
+            dataAirQuality["quality"] = 'Preemergencia';
+        }
+        else if (resData.data.data.aqi >= 170){
+            dataAirQuality["quality"] = 'Emergencia';
+        }
+    
+        const dateServer = new Date(Date.now());
+        const dateServerString = dateServer.toLocaleDateString('es-CL', { timeZone: 'America/Santiago' });
+    
+        const dateFechaServer = dateServerString.split('-');
+    
+        const year = Number(dateFechaServer[2]);
+        const month = Number(dateFechaServer[1]) - 1;
+        const day = Number(dateFechaServer[0]);
+    
+    
+        const newDate = new Date(year, month, day);
+        
+        const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        const days = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+    
+        dataAirQuality['month'] = months[month];
+        dataAirQuality['day'] = day.toString();
+        dataAirQuality['dayWeek'] = days[newDate.getDay()];
+    
+        return dataAirQuality;
+    }
+    catch (err){
+        throw new Error (`Error api air quality: ${err}`);
+    }
+   
 }
