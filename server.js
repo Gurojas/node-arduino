@@ -104,8 +104,8 @@ const getAirQuality = async () => {
     
         const year = Number(dateFechaServer[2]);
         const month = Number(dateFechaServer[1]) - 1;
-        const day = Number(dateFechaServer[0]);
-    
+        let day = Number(dateFechaServer[0]);
+        day = day < 10 ? `0${day}` : day;
     
         const newDate = new Date(year, month, day);
         
